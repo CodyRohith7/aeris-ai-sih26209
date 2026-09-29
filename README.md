@@ -1,42 +1,91 @@
-# SatQuery AI
+# AERIS AI
+
+**Agentic Earth Observation Reasoning & Intelligence System**
+
+*Submission:*
+- **Problem Statement**: SIH26209
+- **Category**: Student Innovation
+- **Technology Bucket**: Space Technology
+- **Category Type**: Software
+
+*Repository*: https://github.com/CodyRohith7/aeris-ai-sih26209
+
+*Originally developed as SatQuery AI during SIH26167-scoped development — that engineering history is preserved throughout this document, `docs/`, and code comments; AERIS AI is the front-facing product identity.*
+
+## Demo
+
+AERIS AI demonstration:
+https://youtu.be/Xl34KnMzDeA
 
 ## Overview
 
-SatQuery AI is a remote-sensing analysis assistant built for **SIH26167**
-(Smart India Hackathon, ISRO — Space Technology problem statement). Given
-one or two satellite/aerial images and a natural-language question, it
-routes the query to the right analysis capability, runs it, generates
-visual evidence, computes an honest confidence score, and produces a full
-execution trace plus an exportable report (JSON and PDF) — through a
-Streamlit "analyst console" UI or a CLI.
+AERIS AI is an agentic Earth-observation intelligence platform that turns
+satellite imagery into evidence-backed insights through natural-language
+interaction. Given one or two satellite/aerial images and a
+natural-language question, it validates the input, routes the query to the
+right analysis capability, executes it, generates visual evidence,
+computes an honest confidence score, and produces a full execution trace
+plus an exportable report (JSON and PDF) — through a Streamlit "Mission
+Console" UI or a CLI. Two real, additive prompt-time adaptation layers
+inject genuine BigEarthNet-derived remote-sensing context into the VQA
+prompt (see [Remote-Sensing Adaptation](#remote-sensing-adaptation)).
 
 The system's guiding principle is **honesty about what actually ran**:
 every answer discloses which model/technique produced it, every confidence
 number states what it measures (and what it doesn't), and nothing is
 presented as a trained deep-learning result unless it genuinely is one.
 
-## Problem Statement
+## Problem
 
-**SIH26167** — ISRO, Space Technology problem statement, calling for an
-AI assistant capable of interpreting remote-sensing imagery (single-image
-question answering, object/feature grounding, bi-temporal change
-detection, and optical+SAR fusion) with a generic, non-remote-sensing-
-adapted vision-language model explicitly called out as insufficient for
-the domain.
+Earth-observation analysis is fragmented across specialized, task-specific
+tools — a user who wants to ask a question about imagery, locate a
+feature, compare two dates, or combine optical and SAR signal today needs
+to understand which tool applies, how to prepare its inputs, and how to
+interpret its output, with no single interface, no shared evidence
+standard, and no visibility into which analysis actually ran or how much
+to trust it.
 
-## Solution
+Originating problem statement: **SIH26167** (ISRO, Space Technology),
+calling for an AI assistant capable of interpreting remote-sensing imagery
+(single-image question answering, object/feature grounding, bi-temporal
+change detection, and optical+SAR fusion) with a generic,
+non-remote-sensing-adapted vision-language model explicitly called out as
+insufficient for the domain.
 
-SatQuery AI implements the full pipeline the problem statement asks for —
-ingestion, validation, intent routing, specialist execution, evidence
-generation, confidence scoring, execution tracing, and export — using a
-combination of a real pretrained vision-language model (for single-image
-VQA) and classical computer-vision baselines (for grounding, change
-detection, and fusion), with every component's real nature disclosed
-rather than implied. The remote-sensing-domain adaptation work that would
-close the gap between "a generic pretrained VLM" and a genuinely
-RS-adapted one was designed, evaluated, and documented in detail (see
+## Solution / Innovation
+
+AERIS AI implements one natural-language interface over four real
+Earth-observation analysis capabilities — ingestion, validation, intent
+routing, specialist execution, evidence generation, confidence scoring,
+execution tracing, and export — using a combination of a real pretrained
+vision-language model (for single-image VQA) and classical computer-vision
+baselines (for grounding, change detection, and fusion), with every
+component's real nature disclosed rather than implied, and every step of
+the routing/execution decision surfaced as an observable "AERIS
+Orchestration" trace rather than a black box. Weight-level
+remote-sensing-domain adaptation (the work that would close the gap
+between "a generic pretrained VLM" and a genuinely RS-adapted one) was
+designed, evaluated, and documented in detail (see
 `docs/rs_adaptation.md`), but was not completed — larger candidate models
-were found impractical on the available CPU-only hardware.
+were found impractical on the available CPU-only hardware. Two
+lightweight, prompt-time-only adaptation layers ARE implemented and real
+(see [Remote-Sensing Adaptation](#remote-sensing-adaptation) below) —
+neither trains or changes any model weight.
+
+**Use cases**: agriculture (land-cover and vegetation analysis), urban
+monitoring (built-up and infrastructure analysis), water (water-region
+identification and monitoring), change analysis (bi-temporal
+investigation), infrastructure and environmental observation — the
+Mission Console's mission-preset buttons map to these areas as UX
+shortcuts onto the same four real specialists, not domain-specific
+trained models.
+
+## Technical Honesty
+
+- **VQA** = real pretrained model (`HuggingFaceTB/SmolVLM-256M-Instruct`), run on CPU.
+- **Grounding / change / fusion** = current classical computer-vision baselines, not trained deep-learning models.
+- **Dataset-backed adaptation** = the retrieval architecture is implemented and tested end-to-end (`src/specialists/rs_example_adapter.py`); live BigEarthNet.txt records are currently unavailable in every reachable environment (`huggingface.co` blocked by organization egress policy — see `docs/rs_adaptation.md` §8), so it honestly reports `applied: false` until a local subset is supplied.
+- **Benchmark scores** = not claimed. `src/evaluation/benchmarks.py` marks every benchmark `NOT_YET_EVALUATED`.
 
 ## Key Capabilities
 
@@ -46,9 +95,12 @@ were found impractical on the available CPU-only hardware.
    vision-language model — **not** remote-sensing-domain-adapted — run on
    CPU. Falls back to a classical color/texture clustering baseline
    (`tool_single_image_vqa_v0`) if the model is unavailable or fails, with
-   the fallback fully disclosed in the output. **Limitation**: a small
-   (256M-parameter), general-purpose VLM trades some accuracy for
-   CPU-feasibility, and it has no remote-sensing-specific training.
+   the fallback fully disclosed in the output. Two prompt-time-only
+   context layers are applied before generation — see
+   [Remote-Sensing Adaptation](#remote-sensing-adaptation) — neither
+   changes the model's weights. **Limitation**: a small (256M-parameter),
+   general-purpose VLM trades some accuracy for CPU-feasibility, and it
+   has no remote-sensing-specific *training*.
 2. **Grounding** — Locates a described feature in an image and draws a
    bounding box. Method: classical computer vision
    (`tool_grounding_v0` — HSV color thresholding + contour extraction),
@@ -195,7 +247,7 @@ conda activate satquery
 streamlit run app\streamlit_app.py
 ```
 
-Opens the "SatQuery AI — Analysis Console" at `http://localhost:8501`,
+Opens the "AERIS AI — Mission Console" at `http://localhost:8501`,
 with four tabs (Single-image VQA, Grounding, Bi-temporal Change,
 Optical+SAR Fusion) and a bundled-synthetic-fixture option on every tab so
 it can be run without hunting for real imagery.
@@ -238,12 +290,16 @@ python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Verified in the local sandbox mirror (classical/CPU-fallback paths only,
-no network egress for model downloads in that environment):
-**100 tests collected, 87 executed and passed, 13 skipped, 0 failed.**
-The 13 skips are tests gated on `torch`/`transformers`/`streamlit` being
-importable (real-model and real-Streamlit `AppTest` smoke tests) — on a
-machine with the full `requirements.txt` installed (e.g. the target
-Windows/conda environment), those run for real instead of skipping.
+no network egress for model downloads or dataset access in that
+environment):
+**136 tests collected, 122 executed and passed, 14 skipped, 0 failed.**
+The 14 skips are tests gated on `torch`/`transformers`/`streamlit` being
+importable (real-model and real-Streamlit `AppTest` smoke tests), plus one
+gated on a local BigEarthNet.txt cache being present (see
+[Remote-Sensing Adaptation](#remote-sensing-adaptation)) — on a machine
+with the full `requirements.txt` installed and that cache prepared (e.g.
+the target Windows/conda environment), those run for real instead of
+skipping.
 
 ## Performance
 
@@ -258,6 +314,73 @@ Measured on real CPU hardware (target Windows machine, no GPU):
 - **Grounding/change/fusion (classical CV)**: sub-second to a few seconds,
   since these do not load a neural network.
 
+## Remote-Sensing Adaptation
+
+AERIS AI distinguishes four clearly separate things, and never blurs
+one into another:
+
+**A. Current VQA model** — `HuggingFaceTB/SmolVLM-256M-Instruct`
+(`src/specialists/vqa_smolvlm.py`), the stock pretrained checkpoint, run
+as-is on CPU. Its weights are never modified by anything below.
+
+**B. Dataset-grounded adaptation (implemented)** — two independent,
+additive, prompt-time-only context layers, both applied before generation
+and neither touching a single model weight:
+
+  1. *Taxonomy context* (`src/specialists/rs_context_adapter.py`) — the
+     public BigEarthNet-19 land-cover class-name list (19 fixed strings,
+     cited, not downloaded), keyword-matched into the prompt when
+     relevant.
+  2. *Retrieval-augmented context* (`src/specialists/rs_example_adapter.py`)
+     — real BigEarthNet.txt text records (question/instruction +
+     reference-answer pairs, from
+     [BIFOLD-BigEarthNetv2-0/BigEarthNet.txt](https://huggingface.co/datasets/BIFOLD-BigEarthNetv2-0/BigEarthNet.txt))
+     retrieved by TF-IDF + cosine similarity from a small local cache
+     (target: a few hundred to ~2000 `train`-split rows only — never the
+     464k-pair satellite image corpus). The 2-3 most similar real records
+     are appended to the prompt as explicitly-labeled reference examples,
+     with the model told not to copy their answers and to answer only
+     from the actual uploaded image.
+
+  **Preparing the local cache**: this repository does not ship a
+  BigEarthNet.txt subset (the dataset is ~9.6M rows; only a small filtered
+  slice is needed). Download the dataset's metadata once from a machine
+  with real internet access, filter to `split == "train"`, keep the
+  `id`/`input`/`output`/`type`/`category`/`split` columns, sample roughly
+  500–2000 rows, and save as
+  `data/cache/bigearthnet_txt_subset.csv` (or point
+  `SATQUERY_BIGEARTHNET_TXT_CACHE` at another path). Without that file
+  present, this layer honestly reports itself as unavailable — see
+  "Graceful fallback" below — rather than fabricating examples.
+
+  **Trace metadata** — every real-model VQA result's `raw` dict carries
+  both layers' status separately: `rs_context_adaptation` (taxonomy) and
+  `rs_example_adaptation` (retrieval — `applied`, `method`,
+  `source`, `dataset_records_available`, `examples_retrieved`,
+  `fine_tuned` (always `False`), `retrieved_ids`). The Streamlit UI shows
+  a matching "REMOTE-SENSING ADAPTATION" indicator next to the VQA result
+  whenever either layer actually fired.
+
+  **Graceful fallback** — if no local cache is present, or loading/parsing
+  it fails for any reason, `rs_example_adaptation.applied` is `False`,
+  `dataset_records_available` is `0`, VQA proceeds completely normally
+  (the taxonomy layer and the base query are unaffected), and the UI shows
+  "Dataset-backed adaptation unavailable" rather than staying silent about
+  it.
+
+**C. NOT implemented** — parameter fine-tuning, LoRA, or any other form of
+weight adaptation. Nothing in this repository trains SmolVLM on
+BigEarthNet or any other remote-sensing dataset. The earlier, more
+ambitious LoRA-adaptation plan (targeting a larger RS-oriented VLM) was
+designed and documented but never executed — see
+[Research / Model Notes](#research--model-notes) and
+`docs/rs_adaptation.md`.
+
+**D. Future work** — actual parameter-level fine-tuning of a
+remote-sensing-adapted VLM, and benchmark evaluation against VRSBench /
+RSVQA / CDVQA once real, held-out ground truth is available (see
+`src/evaluation/benchmarks.py`'s `NOT_YET_EVALUATED` status).
+
 ## Limitations
 
 - **Grounding, change detection, and fusion are classical computer-vision
@@ -265,10 +388,13 @@ Measured on real CPU hardware (target Windows machine, no GPU):
   foundation-model grounding candidates were tried on real hardware and
   both failed to produce spatially meaningful boxes on this kind of
   imagery (a documented model/domain limitation).
-- **The VQA model is a general-purpose vision-language model, not
-  remote-sensing-domain-adapted.** A LoRA adaptation plan targeting a
-  larger remote-sensing-oriented VLM was designed and documented but not
-  executed (see `docs/rs_adaptation.md`).
+- **The VQA model's weights are not remote-sensing-domain-adapted** — it
+  is the stock pretrained SmolVLM-256M-Instruct checkpoint. Two prompt-time
+  context layers (a fixed taxonomy and BigEarthNet.txt-record retrieval,
+  see [Remote-Sensing Adaptation](#remote-sensing-adaptation)) are real
+  but do not change this; a LoRA adaptation plan targeting a larger
+  remote-sensing-oriented VLM was designed and documented but not executed
+  (see `docs/rs_adaptation.md`).
 - **CPU-only inference is slow** (tens of seconds per VQA query, ~47s
   model load) — there is no GPU acceleration path in the current setup.
 - **Small VLM size (256M parameters)** trades some answer accuracy and

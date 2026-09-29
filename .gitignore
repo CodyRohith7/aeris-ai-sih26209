@@ -32,3 +32,7 @@ runs/
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# Raw satellite datasets (kept locally for offline rendering/provenance, not tracked in git)
+data/raw/*
+!data/raw/.gitkeep

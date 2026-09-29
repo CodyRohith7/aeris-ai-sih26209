@@ -45,7 +45,7 @@ except ImportError:
     _REPORTLAB_AVAILABLE = False
 
 BUILD_LABEL = "v0 (MVP baseline)"
-REPORT_TITLE = "SatQuery AI — Analysis Report"
+REPORT_TITLE = "AERIS AI — Earth Observation Analysis Report"
 
 _TASK_TYPE_LABELS = {
     "single_image_vqa": "Single-image VQA",
@@ -108,8 +108,8 @@ def _make_header_footer(generated_at: str):
         width, height = A4
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(colors.grey)
-        canvas.drawString(2 * cm, height - 1.2 * cm, "SatQuery AI — Analysis Report")
-        canvas.drawRightString(width - 2 * cm, height - 1.2 * cm, "SIH26167 · ISRO · Space Technology Programme")
+        canvas.drawString(2 * cm, height - 1.2 * cm, "AERIS AI — Earth Observation Analysis Report")
+        canvas.drawRightString(width - 2 * cm, height - 1.2 * cm, "SIH26209 · Student Innovation · Space Technology")
         canvas.line(2 * cm, height - 1.3 * cm, width - 2 * cm, height - 1.3 * cm)
         canvas.drawString(2 * cm, 1.2 * cm, f"Generated {generated_at}")
         canvas.drawRightString(width - 2 * cm, 1.2 * cm, f"Page {canvas.getPageNumber()}")
@@ -137,7 +137,7 @@ def export_pdf(trace: ExecutionTrace, out_path: str) -> str:
 
     # --- Title -----------------------------------------------------------
     story.append(Paragraph(REPORT_TITLE, styles["Title"]))
-    story.append(Paragraph("SIH26167 · ISRO Space Technology Programme", small_right))
+    story.append(Paragraph("SIH26209 · Student Innovation · Space Technology · Software", small_right))
     story.append(Spacer(1, 0.4 * cm))
 
     # --- 1. Analysis Summary ----------------------------------------------
@@ -295,7 +295,7 @@ def export_pdf(trace: ExecutionTrace, out_path: str) -> str:
         _table(
             [
                 ["Report generated", generated_at],
-                ["Report generator", "SatQuery AI report.py (reportlab)"],
+                ["Report generator", "AERIS AI report.py (reportlab)"],
                 ["Build", BUILD_LABEL],
                 ["Source trace file", os.path.basename(out_path).replace(".pdf", ".json")],
             ]

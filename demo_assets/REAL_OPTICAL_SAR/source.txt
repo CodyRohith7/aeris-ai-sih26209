@@ -1,0 +1,54 @@
+================================================================================
+AERIS AI Demo Asset - Optical + SAR Pair (Real Sentinel-1 / Sentinel-2)
+================================================================================
+
+1. WHAT THIS IS
+--------------------------------------------------------------------------------
+optical_real.png and sar_real.png are rendered from the SAME real, raw
+BigEarthNet.txt Sentinel-1/Sentinel-2 GeoTIFF patch already preserved in this
+workspace at data/raw/sample_pair_bigearthnet/ (see that directory's real
+band filenames below) - not a live download, not a synthetic/generated
+image. This is a separate, simpler rendering of that same real patch from
+the one in demo_assets/04_OPTICAL_SAR/ (which composites a dual-polarization
+SAR false-color image); this rendering was produced for the AERIS AI
+"Optical + SAR Mission" / "VQA Mission" demo presets specifically.
+
+2. PATCH IDENTIFIERS & PROVENANCE (same real patch as demo_assets/04_OPTICAL_SAR/)
+--------------------------------------------------------------------------------
+Sentinel-2 (Optical) Patch ID:
+  S2B_MSIL2A_20180428T095029_N9999_R079_T33TXN_10_32
+  Raw bands present in data/raw/sample_pair_bigearthnet/: B01-B09, B11, B12, B8A
+
+Sentinel-1 (SAR) Patch ID:
+  S1A_IW_GRDH_1SDV_20180428T164218_33TXN_10_32
+  Raw bands present in data/raw/sample_pair_bigearthnet/: VV, VH
+
+See demo_assets/04_OPTICAL_SAR/source.txt for the full dataset citation,
+UTM tile grid, CORINE land-cover labels, and license/citation details for
+this same patch - not repeated here to avoid two documents drifting apart.
+
+3. RENDERING (verified by direct pixel inspection - not just asserted)
+--------------------------------------------------------------------------------
+optical_real.png:
+  - Bands used: Red = B04 (665 nm), Green = B03 (560 nm), Blue = B02 (490 nm)
+  - True-color RGB composite, 120 x 120 pixels, 8-bit PNG
+  - Verified: real per-channel color variation present (not a flat/grayscale
+    render) - mean per-channel (B,G,R) pixel values differ across channels.
+
+sar_real.png:
+  - Band used: VV only (single polarization - no VH, no ratio composite)
+  - Rendered as a grayscale image (replicated across R/G/B channels)
+  - 120 x 120 pixels, 8-bit PNG
+  - Verified: R, G, and B channels are pixel-for-pixel identical (mean
+    |channel difference| = 0.0), consistent with a genuine single-band
+    VV-only rendering rather than a multi-polarization composite.
+
+4. WHAT THIS IS NOT
+--------------------------------------------------------------------------------
+- Not co-registered at sub-pixel precision by this pipeline - the AERIS AI
+  "Sensor Intelligence" panel checks dimension pairing only and never
+  claims co-registration for this or any other input pair.
+- Not used for any dataset-backed VQA prompt adaptation - that is a
+  separate mechanism (src/specialists/rs_example_adapter.py) driven by
+  BigEarthNet.txt *text* records, unrelated to these two PNGs.
+================================================================================

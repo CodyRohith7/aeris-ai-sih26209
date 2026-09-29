@@ -1,5 +1,29 @@
 #!/usr/bin/env python3
-"""SatQuery AI - analyst workstation UI (Streamlit).
+"""AERIS AI - Agentic Earth Observation Reasoning & Intelligence System.
+Mission Console UI (Streamlit).
+
+Product identity: this application was developed as "SatQuery AI" during
+SIH26167-scoped development (that history is preserved in code comments,
+docs/, and changelog references below) and is now submitted front-facing
+as AERIS AI under Student Innovation / Space Technology / Software
+(SIH26209). This is a rebrand and UX pass only - see the "PRODUCT PIVOT"
+note below for exactly what did and did not change.
+
+PRODUCT PIVOT (kept brief; the substance is unchanged): every rendering
+function below still calls the exact same `pipeline.run_query()` / renders
+the exact same `ExecutionTrace` objects it always did (see the
+architectural rule two paragraphs down, still true). The pivot adds: a
+"Mission Console" framing for the unified analysis tab, mission-preset
+buttons that populate a suggested query (same mechanism as the pre-existing
+example-query chips), a compact "Mission Brief" summary card built from
+real trace/output fields, a prominent "AERIS Orchestration" relabeling of
+the existing, real `routing/timeline.py` step checklist, per-specialist
+"Analysis cards" that surface the same REAL MODEL / CLASSICAL / UNAVAILABLE
+status the sidebar already computes, and demo-preset sample-data entries
+that point at the real local Sentinel-1/Sentinel-2 derived PNGs in
+`demo_assets/REAL_OPTICAL_SAR/` alongside the pre-existing synthetic
+fixtures. No routing, validation, specialist, confidence, or evidence logic
+changed.
 
 Design plan and rationale: docs/ui_design.md - see "Revision 4" for the
 FINAL UI REFINEMENT (visual-only) pass this file implements on top of
@@ -54,6 +78,7 @@ import pipeline  # noqa: E402 - shared orchestration, same module app/cli.py use
 from export import report  # noqa: E402
 from evidence import composer  # noqa: E402
 from ingestion import raster_io  # noqa: E402
+from ingestion import metadata as metadata_mod  # noqa: E402
 from models import registry  # noqa: E402
 from routing import failure_classification as failure_mod  # noqa: E402
 from routing import timeline as timeline_mod  # noqa: E402
@@ -154,6 +179,13 @@ EXAMPLE_QUERIES: Dict[str, List[str]] = {
         "Use both images to identify built-up and water-covered regions.",
         "Where does the SAR signal disagree with the optical image?",
     ],
+    "ask": [
+        "Describe the major land cover types visible in this image.",
+        "Locate the water body in this image and highlight it.",
+        "What changed between these two dates?",
+        "Use both images to identify built-up and water-covered regions.",
+        "Is there any visible water in this image?",
+    ],
 }
 
 _STATUS_CLASS = {
@@ -175,7 +207,7 @@ _BACKEND_STATE_COLOR = {
 }
 
 st.set_page_config(
-    page_title="SatQuery AI - Analysis Console",
+    page_title="AERIS AI - Mission Console",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -420,6 +452,36 @@ hr { border-color: var(--border); margin: var(--sp-3) 0; }
 .sq-empty-choices { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .sq-empty-choice { font-family: var(--font-sans); font-size: var(--fs-label); color: var(--text-faint); border: 1px solid var(--border); border-radius: var(--radius-inner); padding: 4px 10px; letter-spacing: 0.04em; }
 .sq-empty-choice-current { color: var(--accent2); border-color: var(--accent2); }
+
+/* --- AERIS AI pivot: mission cards, mission brief, analysis cards, sensor
+   readiness badge. Additive only - reuses the existing token palette
+   (--panel/--border/--accent/--accent2/--text-dim etc.), no new colors, no
+   layout system change. --- */
+.aeris-eyebrow { font-family: var(--font-sans); font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: var(--sp-2) 0 4px 0; }
+.aeris-subtitle { font-family: var(--font-sans); font-size: var(--fs-metadata); color: var(--text-dim); margin-bottom: var(--sp-3); }
+
+.aeris-mission-row { display: flex; flex-direction: column; }
+.aeris-mission-card { text-align: left !important; }
+.aeris-mission-desc { font-family: var(--font-sans); font-size: var(--fs-label); color: var(--text-faint); margin: -2px 0 var(--sp-2) 0; }
+
+.aeris-analysis-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+@media (max-width: 900px) { .aeris-analysis-grid { grid-template-columns: repeat(2, 1fr); } }
+.aeris-analysis-card { border: 1px solid var(--border); border-radius: var(--radius-outer); background: var(--panel); padding: var(--sp-2) var(--sp-3); }
+.aeris-analysis-name { font-family: var(--font-sans); font-size: var(--fs-metadata); font-weight: 700; color: var(--text); }
+.aeris-analysis-desc { font-family: var(--font-sans); font-size: var(--fs-label); color: var(--text-dim); margin-top: 2px; min-height: 28px; }
+.aeris-analysis-backend { font-family: var(--font-sans); font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.05em; margin-top: var(--sp-2); }
+
+.aeris-brief { border: 1px solid var(--accent2); border-radius: var(--radius-outer); background: var(--panel); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
+.aeris-brief-title { font-family: var(--font-sans); font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent2); margin-bottom: var(--sp-2); }
+.aeris-brief-finding { font-family: var(--font-sans); font-size: var(--fs-body); font-weight: 500; color: var(--text); line-height: 1.5; margin-bottom: var(--sp-2); }
+.aeris-brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-2) var(--sp-4); }
+.aeris-brief-k { font-family: var(--font-sans); font-size: var(--fs-label); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.aeris-brief-v { font-family: var(--font-sans); font-size: var(--fs-metadata); color: var(--text); margin-top: 1px; }
+
+.aeris-sensor-ready { font-family: var(--font-mono); font-size: var(--fs-metadata); color: var(--accent2); line-height: 1.6; margin-top: var(--sp-2); white-space: pre; }
+
+.aeris-orch-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-outer); background: var(--panel); padding: var(--sp-3) var(--sp-4); margin: var(--sp-2) 0 var(--sp-3) 0; }
+.aeris-orch-title { font-family: var(--font-sans); font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: var(--sp-2); }
 </style>
 """
 st.markdown(_CSS, unsafe_allow_html=True)
@@ -548,7 +610,18 @@ def _execute_and_record(prefix: str, mode: str, inputs: Dict[str, Any], query: s
     given, is the directory an initial run already created to save uploaded
     file(s) into - reused as the output directory too, so one run produces
     one run directory, not two; a follow-up (no new upload to save) omits it
-    and gets a fresh one."""
+    and gets a fresh one.
+
+    `mode="auto"` is used by the unified "Ask AERIS" tab, which (by
+    design - see docs/ui_design.md / the router's own paired-image
+    disambiguation rules) does not know in advance which of the four real
+    task_types the router will choose - unlike the four fixed-purpose tabs,
+    which always pass their own real mode name because a fixed-purpose tab's
+    mode IS the task type it dispatches. After the real `trace` comes back,
+    "auto" is resolved from the REAL `trace.router_decision.task_type` the
+    router actually produced, never guessed ahead of time - this is a
+    read-only relabeling for the extra-evidence panel captions, not a
+    second routing decision."""
     if run_dir is None:
         run_dir = _new_run_dir(prefix)
     kwargs = dict(inputs)
@@ -556,6 +629,13 @@ def _execute_and_record(prefix: str, mode: str, inputs: Dict[str, Any], query: s
     kwargs["out_dir"] = run_dir
     with st.spinner("Running analysis - this can take under a minute on CPU..."):
         trace = pipeline.run_query(**kwargs)
+
+    if mode == "auto":
+        real_task_type = trace.router_decision.task_type if trace.router_decision else None
+        mode = {
+            "optical_sar_fusion": "fusion",
+            "bitemporal_change": "change",
+        }.get(real_task_type)
 
     extra = None
     if mode == "fusion":
@@ -605,9 +685,9 @@ def render_header() -> None:
         <div class="sq-header">
           <div class="sq-header-top">
             <div>
-              <div class="sq-display">SatQuery AI</div>
-              <div class="sq-header-section">Remote sensing analysis</div>
-              <div class="sq-header-meta">SIH26167 &middot; ISRO &middot; Space Technology Programme</div>
+              <div class="sq-display">AERIS AI</div>
+              <div class="sq-header-section">Agentic Earth Observation Intelligence</div>
+              <div class="sq-header-meta">Student Innovation &middot; Space Technology &middot; Software &middot; SIH26209</div>
             </div>
             {badge}
           </div>
@@ -671,6 +751,38 @@ def render_sidebar() -> None:
             "Grounding, bi-temporal change, and optical+SAR fusion use classical "
             "computer-vision baselines, not trained foundation models."
         )
+        st.caption("Developed as SatQuery AI (SIH26167 dev history); submitted as AERIS AI.")
+
+
+_AERIS_ANALYSIS_CARDS = (
+    ("VQA", "Vision-language scene understanding", [SMOLVLM_TOOL_NAME, CLASSICAL_VQA_TOOL_NAME]),
+    ("GROUNDING", "Text-guided spatial localisation", ["tool_grounding_v0"]),
+    ("CHANGE", "Bi-temporal change analysis", ["tool_change_v0"]),
+    ("OPTICAL + SAR", "Cross-modal Earth-observation analysis", ["tool_fusion_v0"]),
+)
+
+
+def render_aeris_analysis_cards() -> None:
+    """Phase 7 "Analysis card" per specialist. Every value here is the exact
+    same live registry-derived (REAL MODEL / CLASSICAL / UNAVAILABLE) status
+    `_capability_backend_label` already computes for the sidebar "System"
+    rail - this is a second, more visible surface for the same real data,
+    not a new claim. Explicitly discloses learned-model vs. classical-CV
+    baseline per card, never hidden, per the pivot brief's "transparency is
+    part of the product" instruction."""
+    cols = st.columns(len(_AERIS_ANALYSIS_CARDS))
+    for col, (name, desc, tool_names) in zip(cols, _AERIS_ANALYSIS_CARDS):
+        state_label, _ready = _capability_backend_label(tool_names)
+        color = _BACKEND_STATE_COLOR.get(state_label, "var(--text-dim)")
+        with col:
+            st.markdown(
+                f'<div class="aeris-analysis-card">'
+                f'<div class="aeris-analysis-name">{html.escape(name)}</div>'
+                f'<div class="aeris-analysis-desc">{html.escape(desc)}</div>'
+                f'<div class="aeris-analysis-backend" style="color:{color}">{html.escape(state_label)}</div>'
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
 
 def render_mode_help(mode_key: str) -> None:
@@ -705,6 +817,38 @@ def render_example_chips(mode_key: str, query_key: str) -> None:
                 args=(query_key, suggestion),
                 type="secondary",
             )
+
+
+# Phase 3 "Mission" presets: UX-only shortcuts, same on_click/session_state
+# mechanism as render_example_chips above (`_set_session_value`) - a click
+# only populates the query text field with a representative query for that
+# application area. These are NOT domain-specific trained models: every
+# mission still runs through the exact same router.decide() and the exact
+# same four real specialists every other query does; the card is a starting
+# point, not a claim about a specialized model existing for that domain.
+AERIS_MISSIONS: List[Tuple[str, str, str]] = [
+    ("AGRICULTURE", "Land-cover and vegetation analysis", "Describe the major land cover types visible in this image."),
+    ("URBAN", "Built-up and infrastructure analysis", "Highlight the urban / built-up region."),
+    ("WATER", "Water-region identification and monitoring", "Locate the water body in this image and highlight it."),
+    ("CHANGE", "Bi-temporal change investigation", "What changed between these two dates?"),
+    ("MULTIMODAL", "Optical + SAR joint analysis", "Use both images to identify built-up and water-covered regions."),
+]
+
+
+def render_mission_selector(query_key: str) -> None:
+    st.markdown('<div class="sq-chip-label">Mission</div>', unsafe_allow_html=True)
+    cols = st.columns(len(AERIS_MISSIONS))
+    for i, (col, (name, desc, suggested_query)) in enumerate(zip(cols, AERIS_MISSIONS)):
+        with col:
+            st.button(
+                name,
+                key=f"{query_key}_mission_{i}",
+                on_click=_set_session_value,
+                args=(query_key, suggested_query),
+                type="secondary",
+                help=desc,
+            )
+            st.markdown(f'<div class="aeris-mission-desc">{html.escape(desc)}</div>', unsafe_allow_html=True)
 
 
 def render_section_header(prefix: str, kind: str) -> None:
@@ -813,6 +957,69 @@ def render_active_specialist(out: SpecialistOutput) -> None:
             )
 
 
+def render_rs_context_badge(out: SpecialistOutput) -> None:
+    """Honest indicator for the prompt-time BigEarthNet-19 domain-vocabulary
+    context layer (src/specialists/rs_context_adapter.py). Reuses the
+    existing `.sq-status-badge` styling (no new CSS, no visual redesign) -
+    shows "Active" with the real retrieved-term count ONLY when
+    `out.raw["rs_context_adaptation"]["applied"]` is genuinely True for
+    this run. When the key is absent (classical baseline path - it never
+    sets this) or `applied` is False (feature disabled, or this specific
+    query had no land-cover-relevant wording to match), this renders
+    nothing rather than fabricate an "Active" state."""
+    info = out.raw.get("rs_context_adaptation") if isinstance(out.raw, dict) else None
+    if not info or not info.get("applied"):
+        return
+    terms = info.get("terms") or []
+    count = len(terms)
+    st.markdown(
+        '<span class="sq-status-badge sq-status-ready">'
+        '<span class="sq-status-dot"></span>'
+        f"REMOTE-SENSING ADAPTATION: ACTIVE ({count} TERM{'S' if count != 1 else ''})</span>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Prompt-time domain vocabulary injected from the public BigEarthNet-19 "
+        f"land-cover taxonomy (not fine-tuning; source: {info.get('source', '')}) - "
+        "reference terms: " + ", ".join(terms)
+    )
+
+
+def render_rs_example_badge(out: SpecialistOutput) -> None:
+    """Honest indicator for the retrieval-augmented, dataset-grounded
+    context layer (src/specialists/rs_example_adapter.py) - real
+    BigEarthNet.txt text records retrieved by TF-IDF, never fine-tuning.
+    Unlike `render_rs_context_badge` above, this renders even when the
+    layer is NOT active, because "unavailable" is itself meaningful,
+    disclosed status here (per the fallback requirement that the UI must
+    say so, not stay silent) - it simply does so in a muted caption rather
+    than the "Active" badge style, and only when the real-model VQA path
+    actually ran (the key is absent on the classical baseline path)."""
+    info = out.raw.get("rs_example_adaptation") if isinstance(out.raw, dict) else None
+    if not info:
+        return
+    if info.get("applied"):
+        n = info.get("examples_retrieved", 0)
+        st.markdown(
+            '<span class="sq-status-badge sq-status-ready">'
+            '<span class="sq-status-dot"></span>'
+            f"REMOTE-SENSING ADAPTATION: RETRIEVAL-AUGMENTED DOMAIN CONTEXT ({n} EXAMPLE{'S' if n != 1 else ''})</span>",
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            f"Source: {info.get('source', 'BigEarthNet.txt')} — "
+            f"{info.get('dataset_records_available', 0)} local records available, "
+            f"{n} retrieved for this query. Prompt-time domain adaptation; "
+            "model weights unchanged."
+        )
+    else:
+        st.caption(
+            "Remote-sensing adaptation (BigEarthNet.txt retrieval): "
+            "dataset-backed adaptation unavailable"
+            + (" for this query." if info.get("dataset_records_available", 0) else " — no local dataset cache found.")
+        )
+
+
 def render_fallback_banner(out: SpecialistOutput) -> None:
     if not out.fallback_occurred:
         return
@@ -853,6 +1060,100 @@ def render_agent_timeline(trace: ExecutionTrace) -> None:
             )
         parts.append("</div>")
         st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+_AERIS_ORCHESTRATION_LABELS = {
+    "Input validated": "INPUT VALIDATED",
+    "Query interpreted": "QUERY UNDERSTOOD",
+    "Specialist selected": "TASK SELECTED",
+    "Analysis executed": "SPECIALIST EXECUTED",
+    "Evidence generated": "EVIDENCE GENERATED",
+    "Confidence computed": "CONFIDENCE COMPUTED",
+    "Result ready": "RESULT READY",
+}
+
+
+def render_aeris_orchestration(trace: ExecutionTrace) -> None:
+    """Phase 6 hero element: "AERIS Orchestration". This is a pure
+    relabeling of the same real `routing/timeline.py:derive(trace)` steps
+    `render_agent_timeline` already renders (identical status/detail
+    values, identical dot/connector markup) - shown expanded and prominent
+    in the unified Ask AERIS tab instead of collapsed in an expander,
+    because the pivot brief calls this the most important visual element.
+    The routing here is deterministic (router.decide() + fixed specialist
+    dispatch), so this is described as "agentic orchestration" - automatic
+    routing and execution of a specialist workflow - never as an LLM
+    agent making the routing decision."""
+    steps = timeline_mod.derive(trace)
+    parts = [
+        '<div class="aeris-orch-wrap"><div class="aeris-orch-title">AERIS Orchestration &middot; agentic routing and execution</div>',
+        '<div class="sq-tl">',
+    ]
+    last = len(steps) - 1
+    for i, step in enumerate(steps):
+        cls = _STATUS_CLASS[step.status]
+        label = _AERIS_ORCHESTRATION_LABELS.get(step.label, step.label.upper())
+        detail_text = step.detail or _STATUS_FALLBACK_TEXT.get(step.status, "")
+        detail_html = f'<div class="sq-tl-detail">{html.escape(detail_text)}</div>' if detail_text else ""
+        connector_html = '<div class="sq-tl-connector"></div>' if i < last else ""
+        parts.append(
+            '<div class="sq-tl-item">'
+            f'<div class="sq-tl-marker-col"><div class="sq-tl-dot {cls}"></div>{connector_html}</div>'
+            f'<div class="sq-tl-body"><div class="sq-tl-label">{html.escape(label)}</div>{detail_html}</div>'
+            "</div>"
+        )
+    parts.append("</div></div>")
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+def render_mission_brief(trace: ExecutionTrace, out_dir: str) -> None:
+    """Phase 4 hero result card: "Mission Brief". Every field is read
+    directly off the real `ExecutionTrace` / `SpecialistOutput` the router
+    and specialist actually produced for this run - Question is the real
+    query, Inputs/Sensors come from `trace.input_summary`, Analysis path is
+    the real router decision, Key finding is the specialist's own real
+    (truncated) answer text, Evidence is the real evidence-item count,
+    Confidence is the real confidence value/label already computed
+    elsewhere on this page, and Runtime is the specialist's own real
+    `latency_seconds`. Nothing here is a second computation - it is a
+    compact, glanceable summary of fields already on `trace`."""
+    out = trace.specialist_output
+    decision = trace.router_decision
+    if out is None:
+        return
+    sensors = []
+    for s in trace.input_summary:
+        modality = s.get("modality") if isinstance(s, dict) else None
+        if modality:
+            sensors.append(str(modality).upper())
+    analysis_path = TASK_TYPE_LABELS.get(decision.task_type, decision.task_type) if decision else "—"
+    conf = out.confidence
+    conf_str = f"{conf.value:.2f} ({CONFIDENCE_SHORT_LABEL.get(conf.method_version, conf.method_version)})" if conf else "—"
+    rows = [
+        ("Inputs", str(len(trace.input_summary))),
+        ("Sensors", " + ".join(sensors) if sensors else "—"),
+        ("Analysis path", analysis_path),
+        ("Evidence", f"{len(out.evidence)} item(s)"),
+        ("Confidence", conf_str),
+        ("Runtime", f"{out.latency_seconds:.1f}s"),
+    ]
+    grid_html = "".join(
+        f'<div><div class="aeris-brief-k">{html.escape(k)}</div><div class="aeris-brief-v">{html.escape(v)}</div></div>'
+        for k, v in rows
+    )
+    st.markdown(
+        f"""
+        <div class="aeris-brief">
+          <div class="aeris-brief-title">Mission Brief</div>
+          <div class="aeris-brief-k">Question</div>
+          <div class="aeris-brief-v" style="margin-bottom:var(--sp-2)">{html.escape(trace.query)}</div>
+          <div class="aeris-brief-k">Key finding</div>
+          <div class="aeris-brief-finding">{html.escape(_truncate(out.answer_text, 280))}</div>
+          <div class="aeris-brief-grid">{grid_html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _clear_tab_state(prefix: str) -> None:
@@ -974,7 +1275,7 @@ def render_followup(prefix: str) -> Tuple[str, bool]:
 
 
 def render_conversation_history(prefix: str) -> None:
-    """Renders prior real exchanges in this tab as a "You: / SatQuery:"
+    """Renders prior real exchanges in this tab as a "You: / AERIS:"
     transcript - continuing one investigation on the same image/query
     context, not a generic chatbot log. Every line here is a real prior
     query and a real prior trace's own answer text (or its real failure
@@ -994,10 +1295,294 @@ def render_conversation_history(prefix: str) -> None:
                 answer_bit = ""
             parts.append(
                 f'<div class="sq-convo-turn"><span class="sq-convo-who">You</span>{html.escape(q)}</div>'
-                f'<div class="sq-convo-turn sq-convo-answer"><span class="sq-convo-who">SatQuery</span>'
+                f'<div class="sq-convo-turn sq-convo-answer"><span class="sq-convo-who">AERIS</span>'
                 f"{html.escape(_truncate(answer_bit, 240))}</div>"
             )
         st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
+# "Ask AERIS" (formerly "Ask SatQuery") - unified tab. Priority 1/2/4/5/7 per the agentic-analyst
+# upgrade brief. This section adds NO new decision-making: it collects
+# inputs in one form, calls the exact same `pipeline.run_query()` (and
+# therefore the exact same `router.decide()`) every other tab already
+# calls, and renders the exact same `ExecutionTrace` / `RouterDecision` /
+# `SpecialistOutput` objects - just in a different, more compact,
+# evidence-first layout. See `_execute_and_record`'s `mode="auto"` handling
+# above for the one small, backward-compatible addition this required.
+# ---------------------------------------------------------------------------
+
+_ASK_PLAN_LABELS = {
+    "Input validated": "INPUT CHECK",
+    "Query interpreted": "INTENT DETECTED",
+    "Specialist selected": "SPECIALIST SELECTED",
+    "Analysis executed": "ANALYSIS",
+    "Evidence generated": "EVIDENCE",
+    "Result ready": "RESULT",
+}
+
+
+def _ask_preview_dir() -> str:
+    d = os.path.join(RUNS_DIR, "ask_preview")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _ask_preview_metadata(path: str, declared_modality: Optional[str], declared_date: Optional[str]):
+    """Loads a real file and runs it through the exact same
+    `ingestion.metadata.inspect()` every specialist's input already goes
+    through - used here only to populate the pre-run "Image intelligence"
+    card, never to make a routing/validation decision (that only ever
+    happens once, inside `pipeline.run_query()`, when Analyze is clicked).
+    Returns None (never a guessed metadata object) if the file can't be
+    read at all."""
+    try:
+        raster = raster_io.load(path)
+    except raster_io.RasterLoadError:
+        return None
+    return metadata_mod.inspect(raster, declared_modality, declared_date)
+
+
+def render_image_intelligence(meta_list: List[Any]) -> None:
+    """Phase 5 "Sensor Intelligence" (formerly "Image intelligence"):
+    whatever can be honestly, genuinely known about the provided image(s)
+    before analysis even runs - real dimensions, band count, dtype, file
+    extension, modality (declared/heuristic/unknown - the same three-state
+    honesty `ingestion/metadata.py` already guarantees), CRS presence, and
+    (for a pair) whether the two inputs share dimensions. Nothing here is
+    guessed; a missing field renders the same "Metadata unavailable" string
+    the rest of the app already uses. For a declared optical+SAR pair this
+    also shows a plain OPTICAL + SAR -> MULTIMODAL ANALYSIS READY readiness
+    line - it reports that both modalities are present and dimension
+    pairing was checked, never that the two rasters are co-registered
+    (this app never establishes or claims sub-pixel co-registration)."""
+    if not meta_list:
+        return
+    rows: List[Tuple[str, str]] = [("Image count", str(len(meta_list)))]
+    for i, m in enumerate(meta_list, start=1):
+        ext = (os.path.splitext(m.path)[1].lstrip(".").upper()) or "unknown"
+        rows.append((f"Image {i}", f"{m.width}x{m.height}px · {m.band_count} band(s) · {m.dtype} · {ext}"))
+        rows.append((f"Image {i} modality", f"{m.modality} ({m.modality_confidence})"))
+        rows.append((f"Image {i} CRS", m.crs or "Metadata unavailable"))
+    same_dims = None
+    if len(meta_list) == 2:
+        same_dims = (meta_list[0].width, meta_list[0].height) == (meta_list[1].width, meta_list[1].height)
+        rows.append(("Pairing", "same dimensions" if same_dims else "mismatched dimensions (will be resized to align)"))
+    kv_html = "".join(
+        f'<div class="sq-kv"><span class="sq-k">{html.escape(k)}</span><span class="sq-v">{html.escape(v)}</span></div>'
+        for k, v in rows
+    )
+    st.markdown(f'<div class="sq-panel-label">Sensor Intelligence</div><div class="sq-panel">{kv_html}</div>', unsafe_allow_html=True)
+
+    if len(meta_list) == 2:
+        modalities = {meta_list[0].modality, meta_list[1].modality}
+        if modalities == {"optical", "sar"}:
+            dims_note = "dimensions match" if same_dims else "dimensions differ - will be resized to align, not co-registered"
+            st.markdown(
+                f'<div class="aeris-sensor-ready">OPTICAL\n  +\nSAR\n  &darr;\nMULTIMODAL ANALYSIS READY ({html.escape(dims_note)})</div>',
+                unsafe_allow_html=True,
+            )
+
+
+def render_ask_plan(trace: ExecutionTrace) -> None:
+    """Priority 1: the QUERY -> INPUT CHECK -> INTENT DETECTED -> SPECIALIST
+    SELECTED -> ANALYSIS -> EVIDENCE -> RESULT flow, shown BEFORE the
+    result. This is a pure relabeling of `routing/timeline.py`'s own
+    `derive()` output (the identical real per-step status/detail every
+    other trace-timeline view in this app already uses) - it recomputes
+    nothing and cannot mark a stage done that timeline.derive() did not
+    already mark done."""
+    steps = timeline_mod.derive(trace)
+    parts = [
+        '<div class="sq-trace-flow"><span class="step-label">QUERY</span>'
+        f"{html.escape(trace.query)}</div>"
+    ]
+    for step in steps:
+        label = _ASK_PLAN_LABELS.get(step.label)
+        if label is None:  # "Confidence computed" - folded into the Reliability panel below, not dropped
+            continue
+        color = {"done": "var(--accent2)", "failed": "var(--danger)", "not_reached": "var(--text-faint)"}[step.status]
+        detail_text = step.detail or _STATUS_FALLBACK_TEXT.get(step.status, "")
+        parts.append('<div class="sq-trace-flow"><span class="arrow">&darr;</span></div>')
+        parts.append(
+            f'<div class="sq-trace-flow"><span class="step-label" style="color:{color}">{html.escape(label)}</span>'
+            f"{html.escape(detail_text)}</div>"
+        )
+    st.markdown('<div class="sq-panel-label">Plan</div>', unsafe_allow_html=True)
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+def render_why_this_result(trace: ExecutionTrace) -> None:
+    """Priority 2 "WHY THIS RESULT?": 1-3 short factual statements, each
+    read directly off a real field (the router's own reasoning text, the
+    specialist's own evidence description, or the specialist's own raw
+    computed signal score) - never newly authored copy about THIS result."""
+    out = trace.specialist_output
+    decision = trace.router_decision
+    statements: List[str] = []
+    if decision is not None and decision.reasoning:
+        statements.append(decision.reasoning[-1])
+    if out is not None and out.evidence:
+        statements.append(out.evidence[0].description)
+    raw = out.raw if (out is not None and isinstance(out.raw, dict)) else {}
+    if "otsu_separation_score" in raw:
+        statements.append(
+            f"Change/no-change separation score (Otsu): {raw['otsu_separation_score']:.3f} "
+            "(0 = no separation, 1 = perfectly bimodal)."
+        )
+    elif "survival_ratio" in raw and raw.get("target"):
+        statements.append(
+            f"{raw['survival_ratio'] * 100:.1f}% of the raw colour-thresholded pixels for "
+            f"target '{raw['target']}' survived cleanup."
+        )
+    elif "silhouette_score" in raw:
+        statements.append(f"Joint optical+SAR cluster silhouette (separation quality): {raw['silhouette_score']:.3f}.")
+    statements = statements[:3]
+    if not statements:
+        return
+    st.markdown('<div class="sq-panel-label" style="margin-top:var(--sp-2)">Why this result?</div>', unsafe_allow_html=True)
+    items_html = "".join(f'<div class="sq-kv"><span class="sq-v">&#8226; {html.escape(s)}</span></div>' for s in statements)
+    st.markdown(items_html, unsafe_allow_html=True)
+
+
+def render_what_was_used(trace: ExecutionTrace) -> None:
+    """Priority 2 "WHAT WAS USED": input count, detected/declared modality
+    per input, specialist name, model/tool name, and a handful of the
+    specialist's own real scalar parameter values - every row read
+    directly off `trace`/`SpecialistOutput` fields, nothing invented."""
+    out = trace.specialist_output
+    decision = trace.router_decision
+    rows: List[Tuple[str, str]] = [("Inputs", str(len(trace.input_summary)))]
+    for i, s in enumerate(trace.input_summary, start=1):
+        modality = s.get("modality", "unknown") if isinstance(s, dict) else "unknown"
+        basis = s.get("modality_basis", "unknown") if isinstance(s, dict) else "unknown"
+        rows.append((f"Image {i} modality", f"{modality} ({basis})"))
+    if decision is not None:
+        rows.append(("Specialist", TASK_TYPE_LABELS.get(decision.task_type, decision.task_type)))
+        rows.append(("Tool ID", decision.tool_name))
+    if out is not None:
+        rows.append(("Model", out.model_name if out.model_name else "Classical CV baseline (no pretrained model)"))
+        if isinstance(out.raw, dict):
+            for k, v in out.raw.items():
+                if len(rows) >= 12:
+                    break
+                if isinstance(v, bool) or not isinstance(v, (int, float, str)):
+                    continue
+                label = k.replace("_", " ").capitalize()
+                rows.append((label, f"{v:.3f}" if isinstance(v, float) else str(v)))
+    kv_html = "".join(
+        f'<div class="sq-kv"><span class="sq-k">{html.escape(k)}</span><span class="sq-v">{html.escape(v)}</span></div>'
+        for k, v in rows
+    )
+    st.markdown(
+        f'<div class="sq-panel-label" style="margin-top:var(--sp-2)">What was used</div><div class="sq-panel">{kv_html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_change_summary(trace: ExecutionTrace) -> None:
+    """Priority 4: a compact bi-temporal change summary line, shown only
+    when the router actually chose bitemporal_change - every number in it
+    (changed-area percentage, region count, dimension-match status) is read
+    straight off `SpecialistOutput.raw`/`trace.input_summary`, the same real
+    fields tool_change_v0 and ingestion/metadata.py already populate."""
+    out = trace.specialist_output
+    raw = out.raw if isinstance(out.raw, dict) else {}
+    dims = [s.get("dimensions") if isinstance(s, dict) else None for s in trace.input_summary]
+    aligned = "same dimensions" if len(dims) == 2 and dims[0] == dims[1] and dims[0] is not None else \
+        "mismatched input dimensions, resized to align"
+    parts = []
+    if raw.get("changed_fraction") is not None:
+        parts.append(f"{raw['changed_fraction'] * 100:.1f}% of the scene changed")
+    if raw.get("num_regions") is not None:
+        parts.append(f"{raw['num_regions']} distinct region(s)")
+    parts.append(aligned)
+    parts.append(f"method: {out.tool_name} (grayscale differencing + Otsu threshold)")
+    st.markdown(
+        '<div class="sq-panel-label" style="margin-top:var(--sp-2)">Bi-temporal change summary</div>'
+        f'<div class="sq-answer" style="padding-top:0">{html.escape(" · ".join(parts))}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_ask_empty_state() -> None:
+    st.markdown(
+        """
+        <div class="sq-empty">
+          <div class="sq-empty-title">Ready for analysis</div>
+          <div class="sq-empty-sub">Upload 1 image (VQA/grounding) or 2 images (bi-temporal change / optical+SAR fusion),
+          ask a question, and click Analyze. AERIS routes it to the right specialist automatically.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_ask_result(trace: ExecutionTrace, out_dir: str, prefix: str, extra_evidence=None) -> Tuple[Optional[str], bool]:
+    """AERIS Mission Console result layout for the unified tab: the real
+    plan is shown BEFORE the result, then the Mission Brief hero card and
+    the AERIS Orchestration hero timeline (both new, both pure summaries of
+    real `trace`/`SpecialistOutput` fields - see their own docstrings),
+    then ANSWER / EVIDENCE / RELIABILITY / WHY THIS RESULT / WHAT WAS USED,
+    the bi-temporal change summary when applicable, export, follow-up, and
+    technical details - all via the exact same shared renderers the 4
+    original tabs use, so there is one rendering path per concept, not
+    two. The new AERIS Orchestration panel is the prominent, expanded
+    hero version; the older collapsed "Agent process timeline" expander
+    (reusing `render_agent_timeline` verbatim, unchanged from before the
+    pivot) is kept alongside it as the familiar detail view, not removed."""
+    render_ask_plan(trace)
+    render_validation_notes(trace)
+    if trace.failure:
+        return_clicked = render_failure(trace, prefix)
+        render_agent_timeline(trace)
+        render_technical_details(trace)
+        if return_clicked:
+            _clear_tab_state(prefix)
+            _trigger_rerun()
+        return None, False
+
+    out = trace.specialist_output
+    decision = trace.router_decision
+    render_run_meta(trace)
+    render_fallback_banner(out)
+    render_analysis_type(decision)
+
+    render_mission_brief(trace, out_dir)
+    render_aeris_orchestration(trace)
+
+    st.markdown('<div class="sq-panel-label" style="margin-top:var(--sp-2)">Answer</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sq-answer">{html.escape(out.answer_text)}</div>', unsafe_allow_html=True)
+
+    if decision is not None and decision.task_type == "bitemporal_change":
+        render_change_summary(trace)
+
+    st.markdown('<div class="sq-panel-label" style="margin-top:var(--sp-2)">Evidence</div>', unsafe_allow_html=True)
+    if extra_evidence:
+        cols = st.columns(len(extra_evidence))
+        for col, (caption, arr) in zip(cols, extra_evidence):
+            with col:
+                st.markdown(f'<div class="sq-evidence-caption">{html.escape(caption)}</div>', unsafe_allow_html=True)
+                st.image(arr, use_container_width=True)
+    for ev in out.evidence:
+        if ev.image_path and os.path.exists(ev.image_path):
+            st.image(ev.image_path, use_container_width=True)
+        st.caption(ev.description)
+    if decision is not None and decision.task_type == "grounding":
+        st.caption("Classical remote-sensing baseline - not a foundation-model grounding system.")
+
+    render_confidence_compact(out.confidence)  # RELIABILITY - same honest labels/caveats used everywhere else
+    render_rs_context_badge(out)
+    render_rs_example_badge(out)
+    render_why_this_result(trace)
+    render_what_was_used(trace)
+
+    render_agent_timeline(trace)  # kept (collapsed detail view) alongside the new AERIS Orchestration hero above
+    render_export_row(trace, out_dir)
+    followup_query, followup_clicked = render_followup(prefix)
+    render_conversation_history(prefix)
+    render_technical_details(trace)
+    return followup_query, followup_clicked
 
 
 def render_empty_state(mode: str) -> None:
@@ -1059,6 +1644,8 @@ def render_vqa_result(trace: ExecutionTrace, out_dir: str, prefix: str) -> Tuple
         st.markdown(f'<div class="sq-answer">{html.escape(out.answer_text)}</div>', unsafe_allow_html=True)
         render_confidence_compact(out.confidence)
         render_active_specialist(out)
+        render_rs_context_badge(out)
+    render_rs_example_badge(out)
 
     render_agent_timeline(trace)
     render_export_row(trace, out_dir)
@@ -1135,9 +1722,197 @@ def render_capability_result(
 render_header()
 render_sidebar()
 
-tab_vqa, tab_grounding, tab_change, tab_fusion = st.tabs(
-    ["01 · SINGLE IMAGE", "02 · GROUNDING", "03 · BI-TEMPORAL CHANGE", "04 · OPTICAL + SAR"]
+st.markdown(
+    '<div class="aeris-eyebrow">Mission Console</div>'
+    '<div class="aeris-subtitle">One interface, multiple sensors and modalities - evidence-first, orchestration-observable.</div>',
+    unsafe_allow_html=True,
 )
+render_aeris_analysis_cards()
+
+tab_ask, tab_vqa, tab_grounding, tab_change, tab_fusion = st.tabs(
+    ["🛰️ · ASK AERIS", "01 · SINGLE IMAGE", "02 · GROUNDING", "03 · BI-TEMPORAL CHANGE", "04 · OPTICAL + SAR"]
+)
+
+# Demo-mode presets (Phase 11) - map directly onto the pre-existing
+# sample_path1/sample_path2/sample_modality1/sample_modality2/sample_date1/
+# sample_date2 variables `_execute_and_record` already consumes, so this is
+# the exact same tested code path as the older "Sample ..." entries, just
+# pointed at the real local Sentinel-1/Sentinel-2 derived PNGs for the
+# optical+SAR and VQA presets. Nothing here downloads or fabricates data -
+# see demo_assets/REAL_OPTICAL_SAR/source.txt for real provenance.
+REAL_OPTICAL_SAR_DIR = os.path.join(REPO_ROOT, "demo_assets", "REAL_OPTICAL_SAR")
+_REAL_ASSETS_PRESENT = os.path.isfile(os.path.join(REAL_OPTICAL_SAR_DIR, "optical_real.png")) and os.path.isfile(
+    os.path.join(REAL_OPTICAL_SAR_DIR, "sar_real.png")
+)
+
+# --- VIEW 0: Ask AERIS (unified Mission Console) -------------------------------
+# Priority 1 (must-have): one form, one query, one Analyze button, routed
+# automatically by the real router.decide() every other tab already uses.
+# The four tabs below remain the reliable, capability-specific manual
+# fallback - unchanged, and positioned after this one.
+with tab_ask:
+    prefix = "ask"
+    col_in, col_out = st.columns([1, 2], gap="large")
+    with col_in:
+        st.markdown(
+            '<div class="sq-nav-eyebrow">00 &middot; INPUT</div>'
+            '<div class="sq-nav-descriptor">Ask AERIS — describe what you need from the imagery</div>',
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "Upload 1 image for single-image analysis (VQA/grounding), or 2 images for "
+            "bi-temporal change / optical+SAR fusion - AERIS routes to the right "
+            "specialist automatically. The 4 tabs to the right are the reliable, "
+            "manual, capability-specific fallback for each analysis type."
+        )
+
+        sample_options = ["None - upload my own", "Single sample image", "Sample before/after pair", "Sample optical+SAR pair"]
+        if _REAL_ASSETS_PRESENT:
+            sample_options.append("AERIS Demo: Optical + SAR Mission (real Sentinel-1/Sentinel-2)")
+            sample_options.append("AERIS Demo: VQA Mission (real Sentinel-2 optical)")
+        sample_choice = st.selectbox(
+            "Use bundled sample data (optional)",
+            sample_options,
+            key="ask_sample",
+        )
+        using_sample = sample_choice != "None - upload my own"
+
+        sample_path1 = sample_path2 = None
+        sample_modality1 = sample_modality2 = None
+        sample_date1 = sample_date2 = None
+        if sample_choice == "Single sample image":
+            sample_path1 = os.path.join(FIXTURES_DIR, "single_image.png")
+        elif sample_choice == "Sample before/after pair":
+            sample_path1 = os.path.join(FIXTURES_DIR, "change_before.png")
+            sample_path2 = os.path.join(FIXTURES_DIR, "change_after.png")
+            sample_date1 = (datetime.date.today() - datetime.timedelta(days=365)).isoformat()
+            sample_date2 = datetime.date.today().isoformat()
+        elif sample_choice == "Sample optical+SAR pair":
+            sample_path1 = os.path.join(FIXTURES_DIR, "fusion_optical.png")
+            sample_path2 = os.path.join(FIXTURES_DIR, "fusion_sar.png")
+            sample_modality1, sample_modality2 = "optical", "sar"
+        elif sample_choice.startswith("AERIS Demo: Optical + SAR Mission"):
+            sample_path1 = os.path.join(REAL_OPTICAL_SAR_DIR, "optical_real.png")
+            sample_path2 = os.path.join(REAL_OPTICAL_SAR_DIR, "sar_real.png")
+            sample_modality1, sample_modality2 = "optical", "sar"
+        elif sample_choice.startswith("AERIS Demo: VQA Mission"):
+            sample_path1 = os.path.join(REAL_OPTICAL_SAR_DIR, "optical_real.png")
+            sample_modality1 = "optical"
+
+        if using_sample and sample_choice.startswith("AERIS Demo:"):
+            st.markdown(
+                '<div class="sq-sample-note">Real Sentinel-1/Sentinel-2 derived imagery (see demo_assets/REAL_OPTICAL_SAR/source.txt) - not synthetic.</div>',
+                unsafe_allow_html=True,
+            )
+            ask_upload1 = ask_upload2 = None
+        elif using_sample:
+            st.markdown('<div class="sq-sample-note">Synthetic sample data - not real satellite imagery.</div>', unsafe_allow_html=True)
+            ask_upload1 = ask_upload2 = None
+        else:
+            ask_upload1 = st.file_uploader("Image 1", type=["png", "jpg", "jpeg", "tif", "tiff"], key="ask_upload1")
+            ask_upload2 = st.file_uploader(
+                "Image 2 (optional - for change/fusion)", type=["png", "jpg", "jpeg", "tif", "tiff"], key="ask_upload2"
+            )
+
+        ask_modality1_sel = st.selectbox("Image 1 modality (optional)", ["Not declared", "optical", "sar"], key="ask_modality1")
+        ask_modality2_sel = st.selectbox("Image 2 modality (optional)", ["Not declared", "optical", "sar"], key="ask_modality2")
+        ask_declare_dates = st.checkbox("Declare acquisition dates (helps disambiguate bi-temporal change)", key="ask_declare_dates")
+        if ask_declare_dates:
+            ask_date1_widget = st.date_input(
+                "Image 1 date", value=datetime.date.today() - datetime.timedelta(days=365), key="ask_date1"
+            )
+            ask_date2_widget = st.date_input("Image 2 date", value=datetime.date.today(), key="ask_date2")
+        else:
+            ask_date1_widget = ask_date2_widget = None
+
+        # Priority 5: Image intelligence, computed from whatever is currently
+        # provided - BEFORE Analyze is clicked - via the exact same
+        # ingestion.metadata.inspect() every real run already uses.
+        preview_meta = []
+        if using_sample:
+            if sample_path1:
+                m1 = _ask_preview_metadata(sample_path1, sample_modality1, sample_date1)
+                if m1:
+                    preview_meta.append(m1)
+            if sample_path2:
+                m2 = _ask_preview_metadata(sample_path2, sample_modality2, sample_date2)
+                if m2:
+                    preview_meta.append(m2)
+        else:
+            if ask_upload1 is not None:
+                p1 = _save_upload(ask_upload1, _ask_preview_dir(), "preview1")
+                m1 = _ask_preview_metadata(
+                    p1, None if ask_modality1_sel == "Not declared" else ask_modality1_sel,
+                    ask_date1_widget.isoformat() if ask_date1_widget else None,
+                )
+                if m1:
+                    preview_meta.append(m1)
+            if ask_upload2 is not None:
+                p2 = _save_upload(ask_upload2, _ask_preview_dir(), "preview2")
+                m2 = _ask_preview_metadata(
+                    p2, None if ask_modality2_sel == "Not declared" else ask_modality2_sel,
+                    ask_date2_widget.isoformat() if ask_date2_widget else None,
+                )
+                if m2:
+                    preview_meta.append(m2)
+        render_image_intelligence(preview_meta)
+
+        render_mission_selector("ask_query")
+        render_example_chips("ask", "ask_query")
+        st.markdown('<div class="sq-ask-label">Ask your question</div>', unsafe_allow_html=True)
+        query = _seeded_text_input(
+            "Query", "ask_query", EXAMPLE_QUERIES["ask"][0], label_visibility="collapsed",
+        )
+
+        have_image1 = (using_sample and sample_path1 is not None) or (not using_sample and ask_upload1 is not None)
+        note = None
+        if not have_image1:
+            note = ("INSUFFICIENT INPUTS", "Add at least one image, or choose a bundled sample.")
+        elif not query.strip():
+            note = ("INSUFFICIENT INPUTS", "Enter a query.")
+        render_validation_note(note)
+        run_clicked = st.button("Analyze", key="ask_analyze_btn", disabled=note is not None, type="primary")
+
+    if run_clicked:
+        run_dir = _new_run_dir("ask")
+        if using_sample:
+            img1_path, img2_path = sample_path1, sample_path2
+            mod1, mod2 = sample_modality1, sample_modality2
+            d1, d2 = sample_date1, sample_date2
+        else:
+            img1_path = _save_upload(ask_upload1, run_dir, "input1")
+            img2_path = _save_upload(ask_upload2, run_dir, "input2") if ask_upload2 is not None else None
+            mod1 = None if ask_modality1_sel == "Not declared" else ask_modality1_sel
+            mod2 = None if ask_modality2_sel == "Not declared" else ask_modality2_sel
+            d1 = ask_date1_widget.isoformat() if ask_date1_widget else None
+            d2 = ask_date2_widget.isoformat() if ask_date2_widget else None
+        inputs: Dict[str, Any] = {"image1_path": img1_path}
+        if img2_path:
+            inputs["image2_path"] = img2_path
+        if mod1:
+            inputs["modality1"] = mod1
+        if mod2:
+            inputs["modality2"] = mod2
+        if d1:
+            inputs["date1"] = d1
+        if d2:
+            inputs["date2"] = d2
+        _execute_and_record(prefix, "auto", inputs, query, run_dir=run_dir)
+
+    followup_query, followup_clicked = None, False
+    with col_out:
+        st.markdown('<div class="sq-nav-eyebrow">RESULT</div>', unsafe_allow_html=True)
+        if f"{prefix}_trace" in st.session_state:
+            followup_query, followup_clicked = render_ask_result(
+                st.session_state[f"{prefix}_trace"], st.session_state[f"{prefix}_rundir"], prefix,
+                extra_evidence=st.session_state.get(f"{prefix}_extra"),
+            )
+        else:
+            render_ask_empty_state()
+
+    if followup_clicked and followup_query and followup_query.strip():
+        _execute_and_record(prefix, "auto", st.session_state.get(f"{prefix}_inputs", {}), followup_query)
+        _trigger_rerun()
 
 # --- VIEW 1: Single-image VQA -------------------------------------------------
 with tab_vqa:

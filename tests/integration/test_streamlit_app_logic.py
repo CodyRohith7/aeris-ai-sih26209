@@ -479,6 +479,138 @@ class TestStreamlitAppLogic(unittest.TestCase):
             self.assertIn("PARTIAL SYSTEM", markdown_blob)
             self.assertIn(f"{ready}/{total} READY", markdown_blob)
 
+    # --- "Ask SatQuery" unified tab (Priority 1/2/4/5/7) ---------------------
+
+    def test_ask_tab_main_button_starts_disabled_and_is_not_named_run(self):
+        """The unified tab's execution button must start disabled with no
+        input, like every other tab's - but its key must NOT end in "_run",
+        or it would silently change the count the frozen
+        test_initial_load_has_all_run_buttons_disabled asserts (still
+        exactly 4, for the 4 original tabs only)."""
+        fake = _run_app({})
+        keys_seen = dict(fake._calls["button_keys_seen"])
+        self.assertIn("ask_analyze_btn", keys_seen)
+        self.assertTrue(keys_seen["ask_analyze_btn"])  # disabled=True
+        self.assertFalse(any(k == "ask_analyze_btn" and k.endswith("_run") for k in keys_seen))
+        run_buttons = [k for k, d in fake._calls["button_keys_seen"] if k is not None and k.endswith("_run")]
+        self.assertEqual(len(run_buttons), 4, run_buttons)
+
+    def test_ask_tab_dispatches_single_image_to_real_pipeline(self):
+        """1-image case: the unified tab must call the exact same
+        pipeline.run_query() every other tab calls and route through the
+        real router - here to single_image_vqa, exactly as a direct
+        pipeline.run_query() call with the same inputs would."""
+        tmp_upload = os.path.join(REPO_ROOT, "data", "fixtures", "single_image.png")
+        session_state = {
+            "ask_upload1": _FakeUploadedFile(tmp_upload),
+            "ask_query": "Describe the major land cover types visible in this image.",
+            "ask_sample": "None - upload my own",
+        }
+        fake = _run_app(session_state, button_true_key="ask_analyze_btn")
+        self.assertIn("ask_trace", session_state)
+        trace = session_state["ask_trace"]
+        self.assertIsNone(trace.failure)
+        self.assertEqual(trace.router_decision.task_type, "single_image_vqa")
+        self.assertIsNotNone(trace.specialist_output)
+        self.assertGreaterEqual(len(fake._calls["images"]), 1)
+        # extra_evidence must NOT be populated for a single-image result -
+        # mode="auto" must resolve to no extra panel here, not fusion/change.
+        self.assertIsNone(session_state.get("ask_extra"))
+
+    def test_ask_tab_dispatches_two_image_sample_pair_to_change_and_shows_before_after(self):
+        """2-image case, using the bundled sample before/after pair (which
+        auto-declares dates): mode="auto" must resolve from the REAL
+        trace.router_decision.task_type (bitemporal_change) to show the
+        Before/After extra-evidence panels - not from any guess made ahead
+        of running the real pipeline."""
+        session_state = {
+            "ask_sample": "Sample before/after pair",
+            "ask_query": "What changed between these two dates?",
+        }
+        fake = _run_app(session_state, button_true_key="ask_analyze_btn")
+        self.assertIn("ask_trace", session_state)
+        trace = session_state["ask_trace"]
+        self.assertIsNone(trace.failure)
+        self.assertEqual(trace.router_decision.task_type, "bitemporal_change")
+        self.assertIn("ask_extra", session_state)
+        captions = [c for c, _arr in session_state["ask_extra"]]
+        self.assertEqual(captions, ["Before", "After"])
+        self.assertGreaterEqual(len(fake._calls["images"]), 3)
+
+    def test_ask_tab_dispatches_sample_optical_sar_pair_to_fusion(self):
+        """2-image case, sample optical+SAR pair (declares modality1=optical,
+        modality2=sar) - must route to optical_sar_fusion and label the
+        extra-evidence panels Optical/SAR, again resolved only from the
+        real post-run router_decision.task_type."""
+        session_state = {
+            "ask_sample": "Sample optical+SAR pair",
+            "ask_query": "Use both images to identify built-up and water-covered regions.",
+        }
+        _run_app(session_state, button_true_key="ask_analyze_btn")
+        trace = session_state["ask_trace"]
+        self.assertIsNone(trace.failure)
+        self.assertEqual(trace.router_decision.task_type, "optical_sar_fusion")
+        captions = [c for c, _arr in session_state["ask_extra"]]
+        self.assertEqual(captions, ["Optical (input)", "SAR (input)"])
+
+    def test_ask_tab_ambiguous_two_image_input_still_needs_clarification(self):
+        """Regression guarantee: when 2 images are supplied through the
+        unified tab with NEITHER modality NOR dates declared, the real
+        router must still refuse to guess (needs_clarification) - exactly
+        the same guarantee test_no_distinguishing_signal_refuses_to_guess
+        already locks in for router.decide() directly. The unified tab must
+        not weaken this by silently defaulting modality/dates to something
+        that would let the router guess."""
+        img = os.path.join(REPO_ROOT, "data", "fixtures", "single_image.png")
+        session_state = {
+            "ask_upload1": _FakeUploadedFile(img),
+            "ask_upload2": _FakeUploadedFile(img),
+            "ask_query": "Tell me about these images.",
+            "ask_sample": "None - upload my own",
+            "ask_modality1": "Not declared",
+            "ask_modality2": "Not declared",
+            "ask_declare_dates": False,
+        }
+        _run_app(session_state, button_true_key="ask_analyze_btn")
+        self.assertIn("ask_trace", session_state)
+        trace = session_state["ask_trace"]
+        self.assertEqual(trace.router_decision.task_type, "needs_clarification")
+        self.assertIsNotNone(trace.failure)
+        self.assertIn("Router could not confidently determine", trace.failure)
+
+    def test_ask_tab_image_intelligence_card_renders_for_uploaded_image(self):
+        """Priority 5: as soon as an image is present (even before Analyze
+        is clicked), a real Sensor Intelligence panel (renamed from "Image
+        intelligence" in the AERIS AI product pivot - same function, same
+        real data, see render_image_intelligence's docstring) must render,
+        sourced from the actual file via ingestion.metadata.inspect() - not
+        shown at all when no image is present yet."""
+        tmp_upload = os.path.join(REPO_ROOT, "data", "fixtures", "single_image.png")
+        session_state = {"ask_upload1": _FakeUploadedFile(tmp_upload), "ask_sample": "None - upload my own"}
+        fake = _run_app(session_state)  # no button clicked - pre-Analyze state
+        markdown_blob = "\n".join(fake._calls.get("markdown", []))
+        self.assertIn("Sensor Intelligence", markdown_blob)
+        self.assertIn("Image count", markdown_blob)
+
+    def test_ask_tab_shows_plan_before_result_and_agent_timeline(self):
+        """Priority 1 (plan shown before the result) and Priority 7 (the
+        same real agent-process-timeline checklist every other tab uses)
+        must both render for a successful unified-tab run."""
+        tmp_upload = os.path.join(REPO_ROOT, "data", "fixtures", "single_image.png")
+        session_state = {
+            "ask_upload1": _FakeUploadedFile(tmp_upload),
+            "ask_query": "Describe the major land cover types visible in this image.",
+            "ask_sample": "None - upload my own",
+        }
+        fake = _run_app(session_state, button_true_key="ask_analyze_btn")
+        markdown_blob = "\n".join(fake._calls.get("markdown", []))
+        self.assertIn("QUERY", markdown_blob)
+        self.assertIn("INTENT DETECTED", markdown_blob)
+        self.assertIn("SPECIALIST SELECTED", markdown_blob)
+        self.assertIn("Agent process timeline", fake._calls.get("expanders", []))
+        self.assertIn("Why this result?", markdown_blob)
+        self.assertIn("What was used", markdown_blob)
+
 
 if __name__ == "__main__":
     unittest.main()

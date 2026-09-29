@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""SatQuery AI - thin end-to-end CLI.
+"""AERIS AI - thin end-to-end CLI.
+
+Product identity: AERIS AI (Agentic Earth Observation Reasoning &
+Intelligence System), submitted under Student Innovation / Space
+Technology / Software. Developed as SatQuery AI during SIH26167-scoped
+development; that history is preserved in docs/ and changelog references
+where useful, but the front-facing product name is AERIS AI.
 
 This was the entire user interface through the CORE CAPABILITY FREEZE
 milestone. A Streamlit UI now exists (`app/streamlit_app.py`) and calls the
@@ -44,7 +50,7 @@ import pipeline  # noqa: E402 - shared orchestration, also used by streamlit_app
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="SatQuery AI thin end-to-end CLI (v0)")
+    p = argparse.ArgumentParser(description="AERIS AI thin end-to-end CLI (v0)")
     p.add_argument("--image1", required=True, help="Path to the first (or only) input image")
     p.add_argument("--image2", default=None, help="Path to a second input image (for change/fusion)")
     p.add_argument("--query", required=True, help="Natural-language query")
@@ -79,7 +85,7 @@ def main() -> None:
     trace = run(args)
 
     json_path = report.export_json(trace, os.path.join(args.out_dir, "trace.json"))
-    print(f"\n=== SatQuery AI (v0) ===")
+    print(f"\n=== AERIS AI (v0) ===")
     print(f"Query: {trace.query}")
     if trace.router_decision:
         d = trace.router_decision

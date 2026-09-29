@@ -1,8 +1,8 @@
 # GitHub Handoff — for Antigravity
 
-**Repository URL**: `https://github.com/CodyRohith7/satquery-ai-sih26167`
+**Repository URL**: `https://github.com/CodyRohith7/aeris-ai-sih26209`
 
-**Purpose**: Final public repository for SIH26167 SatQuery AI.
+**Purpose**: Final public release repository for AERIS AI (SIH26209, Student Innovation / Space Technology / Software; originally developed as SatQuery AI for SIH26167).
 
 This repository has already been through a repository-preparation pass:
 build cache removed, loose verification-artifact files relocated into

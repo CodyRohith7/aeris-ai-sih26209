@@ -76,6 +76,42 @@ try:
     print(f"  inference_seconds:  {result.raw.get('inference_seconds')}")
     print(f"  total_seconds:      {total_seconds}")
     print(f"  answer_text:        {result.answer_text}")
+
+    # --- rs_context_adaptation check (prompt-time BigEarthNet-19 domain
+    # vocabulary layer, NOT fine-tuning - see
+    # src/specialists/rs_context_adapter.py). This is the one existing
+    # verification command extended to also confirm that layer for real,
+    # against the actual result this real inference produced, rather than
+    # adding a second script. ---
+    rs_info = result.raw.get("rs_context_adaptation")
+    print()
+    print("  RS domain-context adaptation (prompt-time vocabulary, not fine-tuning):")
+    if rs_info:
+        print(f"    source:  {rs_info.get('source')}")
+        print(f"    applied: {rs_info.get('applied')}")
+        print(f"    terms:   {rs_info.get('terms')}")
+    else:
+        print("    (no rs_context_adaptation key found in result.raw)")
+
+    # --- rs_example_adaptation check (prompt-time, retrieval-augmented
+    # domain context layer, real BigEarthNet.txt text records - NOT
+    # fine-tuning - see src/specialists/rs_example_adapter.py). Mirrors the
+    # rs_context_adaptation block above so a single real run on this
+    # machine verifies both prompt-time adaptation layers at once. ---
+    rs_example_info = result.raw.get("rs_example_adaptation")
+    print()
+    print("  RS example-retrieval adaptation (prompt-time, retrieval-augmented, not fine-tuning):")
+    if rs_example_info:
+        print(f"    source:                    {rs_example_info.get('source')}")
+        print(f"    applied:                   {rs_example_info.get('applied')}")
+        print(f"    dataset_records_available: {rs_example_info.get('dataset_records_available')}")
+        print(f"    examples_retrieved:        {rs_example_info.get('examples_retrieved')}")
+        print(f"    retrieved_ids:             {rs_example_info.get('retrieved_ids')}")
+        print(f"    fine_tuned:                {rs_example_info.get('fine_tuned')}")
+        if rs_example_info.get("unavailable_reason"):
+            print(f"    unavailable_reason:        {rs_example_info.get('unavailable_reason')}")
+    else:
+        print("    (no rs_example_adaptation key found in result.raw)")
     sys.exit(0)
 except Exception as exc:  # noqa: BLE001 - report every failure, never swallow
     print(f"  -> FAILED: {type(exc).__name__}: {exc}")

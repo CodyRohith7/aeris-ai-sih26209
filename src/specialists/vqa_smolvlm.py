@@ -25,6 +25,28 @@ so base_signal here is the mean max-softmax probability across the
 generated tokens (from `model.generate(..., output_scores=True,
 return_dict_in_generate=True)`), a real, model-native signal computed from
 this specific answer's own generation - not a fabricated or fixed number.
+
+RS DOMAIN CONTEXT (prompt-time only, NOT fine-tuning): `run()` layers TWO
+independent, additive prompt-time context sources onto the query text
+before it reaches the model - neither changes `_load()`, the model
+checkpoint, or its weights; both only change the input text, and
+`answer_text` still discloses, unchanged, that this is a general-purpose
+VLM, not a remote-sensing-domain-adapted one.
+
+  1. `specialists/rs_context_adapter.py` - a fixed, cited BigEarthNet-19
+     land-cover *taxonomy* (19 class names), matched by keyword overlap.
+  2. `specialists/rs_example_adapter.py` - real BigEarthNet.txt *text
+     records* (question/instruction + reference-answer pairs), retrieved
+     by TF-IDF/cosine similarity from a local cache. This is the
+     dataset-grounded, retrieval-augmented layer: real records, real
+     retrieval, still zero weight changes - see that module's docstring
+     for the full provenance, the local-cache mechanism, and why it
+     degrades to `applied: False` (never fabricated examples) when no
+     local cache is present.
+
+Both report their own status separately in `raw` (`rs_context_adaptation`
+for the taxonomy layer, `rs_example_adaptation` for the retrieval layer) so
+neither's trace can be mistaken for the other's.
 """
 from __future__ import annotations
 
@@ -35,6 +57,8 @@ from ingestion.metadata import ImageMetadata
 from routing.schemas import SpecialistOutput
 from confidence import engine as confidence_engine
 from evidence import composer
+from specialists import rs_context_adapter
+from specialists import rs_example_adapter
 
 MODEL_ID = "HuggingFaceTB/SmolVLM-256M-Instruct"
 MAX_NEW_TOKENS = 64
@@ -168,10 +192,69 @@ def run(
         img_array = np.stack([img_array] * 3, axis=-1)
     image = Image.fromarray(img_array[..., :3].astype(np.uint8)).convert("RGB")
 
+    # Prompt-time remote-sensing domain-context layer (NOT fine-tuning -
+    # the model checkpoint and its weights are untouched; only the prompt
+    # text below can change). See specialists/rs_context_adapter.py's
+    # module docstring for the full, honest provenance of the vocabulary
+    # this can inject. `applied` is only ever True when a term was actually
+    # retrieved AND the feature is enabled - never forced true.
+    if rs_context_adapter.ADAPTATION_ENABLED:
+        rs_terms = rs_context_adapter.retrieve_relevant_terms(query)
+    else:
+        rs_terms = []
+    prompt_text = rs_context_adapter.build_domain_aware_prompt(query, rs_terms)
+    rs_context_result = rs_context_adapter.RSContextAdaptation(
+        source=rs_context_adapter.SOURCE,
+        terms=rs_terms,
+        applied=bool(rs_terms) and rs_context_adapter.ADAPTATION_ENABLED,
+    )
+
+    # Retrieval-augmented domain context (real BigEarthNet.txt records, TF-IDF
+    # retrieval, local cache only - see module docstring and
+    # specialists/rs_example_adapter.py). Additive to the taxonomy layer
+    # above: appended after it, never replacing the user's own query, and the
+    # model is explicitly told these are reference examples from OTHER
+    # images, not facts about the one it was actually given.
+    t_retrieval0 = time.perf_counter()
+    try:
+        dataset_records_available = rs_example_adapter.dataset_records_available()
+        retrieved_examples = rs_example_adapter.retrieve_examples(query, top_k=3)
+    except Exception:  # noqa: BLE001 - retrieval is an auxiliary context layer, not
+        # the core answer path: any unexpected failure here (e.g. a corrupted
+        # local cache) must degrade to "unavailable", never crash or block a
+        # real VQA answer. This is the one place in this function that
+        # intentionally swallows an exception rather than raising SmolVLMError,
+        # because unlike a model load/generation failure, losing this optional
+        # context layer does not make the answer itself untrustworthy.
+        dataset_records_available = 0
+        retrieved_examples = []
+    retrieval_seconds = round(time.perf_counter() - t_retrieval0, 4)
+    if retrieved_examples:
+        prompt_text = (
+            prompt_text
+            + "\n\n"
+            + rs_example_adapter.build_domain_context_block(retrieved_examples)
+        )
+    rs_example_result = {
+        "applied": bool(retrieved_examples),
+        "method": "retrieval_augmented_prompting",
+        "source": rs_example_adapter.DATASET_SOURCE,
+        "dataset_records_available": dataset_records_available,
+        "examples_retrieved": len(retrieved_examples),
+        "fine_tuned": False,
+        "retrieved_ids": [ex.record_id for ex in retrieved_examples],
+        "retrieval_seconds": retrieval_seconds,
+    }
+    if dataset_records_available == 0:
+        rs_example_result["unavailable_reason"] = (
+            "No local BigEarthNet.txt cache found - dataset-backed adaptation "
+            "unavailable; see docs/rs_adaptation.md."
+        )
+
     try:
         messages = [{
             "role": "user",
-            "content": [{"type": "image"}, {"type": "text", "text": query}],
+            "content": [{"type": "image"}, {"type": "text", "text": prompt_text}],
         }]
         # tokenize=False is explicit (not relied on as a default) because
         # transformers v5 changed apply_chat_template's return shape when
@@ -249,6 +332,8 @@ def run(
             "mean_token_confidence": round(mean_confidence, 4),
             "generated_text": generated_text,
             "full_decoded_text_including_prompt": full_decoded_text,
+            "rs_context_adaptation": rs_context_result.to_dict(),
+            "rs_example_adaptation": rs_example_result,
         },
         tool_name="tool_single_image_vqa_smolvlm_v1",
         task_type="single_image_vqa",

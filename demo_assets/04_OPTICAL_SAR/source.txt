@@ -1,0 +1,90 @@
+================================================================================
+SatQuery AI Demo Asset - Optical + SAR Co-Registered Pair
+================================================================================
+
+1. DATASET
+--------------------------------------------------------------------------------
+Dataset: BigEarthNet-v2.0 (reBEN) / BigEarthNet.txt (Multi-Modal Earth Observation Benchmark)
+Country / Region: Austria (Central Europe)
+UTM Tile Grid: 33TXN (UTM Zone 33N, EPSG:32633)
+Patch Coordinates:
+  - Upper-Left (ulx, uly):   (612000.0 m, 5261640.0 m)
+  - Lower-Right (lrx, lly):  (613200.0 m, 5260440.0 m)
+  - Spatial Coverage:        1.2 km x 1.2 km (120 x 120 pixels @ 10m GSD)
+
+2. PATCH IDENTIFIERS & PROVENANCE
+--------------------------------------------------------------------------------
+Sentinel-2 (Optical) Patch ID:
+  S2B_MSIL2A_20180428T095029_N9999_R079_T33TXN_10_32
+  - Acquisition Time: 2018-04-28T09:50:29 UTC
+  - Sensor: MSI (Multi-Spectral Instrument), Sentinel-2B
+  - Processing Level: Level-2A (Bottom-Of-Atmosphere reflectance)
+
+Sentinel-1 (SAR) Patch ID:
+  S1A_IW_GRDH_1SDV_20180428T164218_33TXN_10_32
+  - Acquisition Time: 2018-04-28T16:42:18 UTC
+  - Sensor: C-band Synthetic Aperture Radar (SAR), Sentinel-1A
+  - Acquisition Mode: Interferometric Wide (IW) swath
+  - Processing Level: Ground Range Detected High Resolution (GRDH)
+
+Temporal Proximity:
+  Acquired on the exact same date (April 28, 2018), ~6.8 hours apart.
+
+3. LAND COVER & SCENE CONTENT
+--------------------------------------------------------------------------------
+CORINE Land Cover (CLC) Multi-Labels:
+  - Arable land (Agriculture)
+  - Land principally occupied by agriculture, with significant areas of natural vegetation
+  - Broad-leaved forest (Natural vegetation)
+  - Urban fabric (Settlement / Built-up structures / Road junction)
+
+Scene Features:
+  - Highway connector & roundabout infrastructure in bottom-left
+  - Cultivated agricultural parcel mosaic across central quadrant
+  - Broadleaved forest canopy patches in top-right and south sectors
+
+4. ORIGINAL SOURCE URLS
+--------------------------------------------------------------------------------
+- Official Project Website: https://bigearth.net/
+- Official Zenodo DOI (v2.0 / reBEN): https://doi.org/10.5281/zenodo.10891137
+- Hugging Face Hub (BigEarthNet.txt): https://huggingface.co/datasets/BIFOLD-BigEarthNetv2-0/BigEarthNet.txt
+- Regional Archive Repositories:
+    - Sentinel-1: https://huggingface.co/datasets/seosiju/BigEarthNet-S1
+    - Sentinel-2: https://huggingface.co/datasets/yousunyu/BigEarthNet_S2_Austria
+
+5. MODALITY & RENDERING SPECIFICATIONS
+--------------------------------------------------------------------------------
+optical.png:
+  - Modality: Optical Multi-Spectral (Sentinel-2 L2A)
+  - Bands Used: Red = B04 (665 nm), Green = B03 (560 nm), Blue = B02 (490 nm)
+  - Rendering: 3-band True Color RGB with 2%-98% percentile linear reflectance stretch
+  - Dimensions: 120 x 120 pixels, 8-bit RGB PNG
+
+sar.png:
+  - Modality: Synthetic Aperture Radar (Sentinel-1 C-band SAR)
+  - Polarizations: Red = VV (dB), Green = VH (dB), Blue = VV - VH ratio (dB)
+  - Rendering: Dual-polarization false-color composite with 2%-98% percentile stretch
+  - Dimensions: 120 x 120 pixels, 8-bit RGB PNG
+
+Preserved Raw Rasters:
+  Preserved in workspace at data/raw/sample_pair_bigearthnet/ as original 16-bit / 32-bit GeoTIFFs:
+  - S1A_IW_GRDH_1SDV_20180428T164218_33TXN_10_32_VV.tif
+  - S1A_IW_GRDH_1SDV_20180428T164218_33TXN_10_32_VH.tif
+  - S2B_MSIL2A_20180428T095029_N9999_R079_T33TXN_10_32_B01.tif .. B12.tif
+
+6. LICENSE & CITATION
+--------------------------------------------------------------------------------
+License:
+  - Dataset License: Community Data License Agreement - Permissive - Version 1.0 (CDLA-Permissive-1.0)
+  - Copernicus Sentinel Data: Free, full, and open access license (ESA / European Commission)
+
+Citations:
+  1. Clasen, K., Sedona, R., Demir, B., & Beggel, L. (2024).
+     "BigEarthNet.txt: A Large-Scale Multi-Sensor Image-Text Dataset and Benchmark for Earth Observation."
+     arXiv:2603.29630.
+  2. Sumbul, G., Charfuelan, M., Demir, B., & Markl, V. (2019).
+     "BigEarthNet: A Large-Scale Benchmark Archive for Remote Sensing Image Understanding."
+     IEEE International Geoscience and Remote Sensing Symposium (IGARSS).
+  3. Clasen, K. et al. (2024).
+     "reBEN: Refined BigEarthNet Dataset." Zenodo. DOI: 10.5281/zenodo.10891137.
+================================================================================

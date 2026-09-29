@@ -2,6 +2,13 @@
 
 **Status: NOT EXECUTED. NOT TRAINED. NOT VERIFIED.**
 
+*Product identity note: this document was written during the "SatQuery AI"
+/ SIH26167 development phase; that engineering history is preserved
+verbatim below. The product's current front-facing name is AERIS AI
+(Student Innovation / Space Technology / Software, SIH26209) — see the
+README's Technical Honesty / Remote-Sensing Adaptation sections for the
+current, up-to-date summary of what's real today.*
+
 ## Section 8: SUPERSEDED — model choice revised for real hardware (Phase 2B)
 
 Everything below this notice (sections 1-7) proposed `google/paligemma2-3b-pt-448`
@@ -920,3 +927,44 @@ not through the development bridge used to prepare this repository.
 resulting checkpoint and `run_metadata.json` should be committed to the
 project folder so they can be reviewed and verified for real before
 `tool_rs_vlm_adapted_v1` is ever marked `AVAILABLE`.
+
+## 8. What was actually implemented instead: prompt-time, retrieval-augmented context (this section, unlike 1-7 above, describes something that runs today)
+
+Everything in sections 1-7 above is about weight-level adaptation (LoRA
+fine-tuning of a larger VLM) that was designed, evaluated, and never
+executed - that conclusion stands unchanged. Separately, and later, two
+much smaller, genuinely-implemented, prompt-time-only context layers were
+added to the existing SmolVLM-256M-Instruct VQA path. Neither is
+fine-tuning, neither is a substitute for the LoRA plan above, and neither
+changes a single model weight. They are documented in full in
+`src/specialists/rs_context_adapter.py` and
+`src/specialists/rs_example_adapter.py`'s own module docstrings, and
+summarized in `README.md`'s "Remote-Sensing Adaptation" section; this
+entry exists so the historical narrative above isn't read as the final
+word on remote-sensing adaptation in this project.
+
+**Taxonomy layer** (`rs_context_adapter.py`, added first): the public,
+cited BigEarthNet-19 land-cover class-name list (19 fixed strings) is
+keyword-matched against the user's query and, when relevant terms are
+found, appended to the prompt as reference vocabulary.
+
+**Retrieval layer** (`rs_example_adapter.py`, added in this pass): real
+BigEarthNet.txt text records (`input`/`output` question-answer pairs from
+[BIFOLD-BigEarthNetv2-0/BigEarthNet.txt](https://huggingface.co/datasets/BIFOLD-BigEarthNetv2-0/BigEarthNet.txt))
+are retrieved by TF-IDF + cosine similarity from a small local cache (a
+few hundred to ~2000 `train`-split rows - never the full ~9.6M-row text
+corpus, never the satellite images at all) and appended to the prompt as
+explicitly-labeled, do-not-copy reference examples. `huggingface.co` was
+confirmed blocked by this project's organization egress policy from both
+the cloud development sandbox and the Windows device bridge (identical
+403-from-proxy behavior documented in section 7 above for `pypi.org`), so
+this module never downloads anything itself - it reads whatever local
+cache file the user has prepared out-of-band, and degrades honestly
+(`applied: False`, no fabricated examples) when that cache is absent. See
+`README.md`'s "Preparing the local cache" instructions.
+
+Both layers report their status separately and honestly in every
+real-model VQA result's execution trace (`rs_context_adaptation` and
+`rs_example_adaptation` in `raw`), and both are visible in the Streamlit
+UI only when they actually fired for that specific query - never a
+permanently-on "adapted" indicator.
