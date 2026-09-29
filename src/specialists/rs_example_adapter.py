@@ -72,7 +72,8 @@ DEFAULT_CACHE_CANDIDATES: Tuple[str, ...] = (
     "data/cache/bigearthnet_txt_subset.parquet",
 )
 
-ENV_OVERRIDE = "SATQUERY_BIGEARTHNET_TXT_CACHE"
+ENV_OVERRIDE = "AERIS_BIGEARTHNET_TXT_CACHE"
+ENV_OVERRIDE_LEGACY = "SATQUERY_BIGEARTHNET_TXT_CACHE"
 
 REQUIRED_COLUMNS = {"input", "output", "split"}
 
@@ -96,7 +97,7 @@ class RSExample:
 
 
 def _candidate_paths() -> List[Path]:
-    override = os.environ.get(ENV_OVERRIDE)
+    override = os.environ.get(ENV_OVERRIDE) or os.environ.get(ENV_OVERRIDE_LEGACY)
     paths = [Path(override)] if override else []
     paths += [_REPO_ROOT / p for p in DEFAULT_CACHE_CANDIDATES]
     return paths
